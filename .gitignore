@@ -1,0 +1,28 @@
+# secrets
+.env
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+
+# generated outputs
+timeline.html
+verify_result.json
+*_16k.wav
+_dl.*
+
+# audio / model artifacts
+*.wav
+*.mp3
+*.m4a
+*.webm
+models/
+*.ckpt
+*.bin
+
+# os
+.DS_Store
+Thumbs.db
