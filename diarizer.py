@@ -27,9 +27,27 @@ Runs on GPU (CUDA / Apple MPS) or CPU — device is auto-selected.
 import os
 import numpy as np
 import torch
+import soundfile as sf
 from pyannote.audio import Pipeline
 
 MODEL = "pyannote/speaker-diarization-community-1"
+
+
+def _load_waveform(path):
+    """Decode an audio file into an in-memory waveform dict for pyannote.
+
+    Reading the file ourselves (via soundfile/libsndfile) and passing a
+    {'waveform': (channel, time) tensor, 'sample_rate': int} dict means pyannote
+    never invokes `torchcodec` — which is fragile on Windows (needs FFmpeg shared
+    DLLs + a matching torch build). This makes the pipeline portable everywhere.
+
+    Expects a soundfile-readable format (wav/flac/ogg). `verify.py` already converts
+    any input to a 16 kHz mono wav via ffmpeg, so this always receives a wav.
+    """
+    audio, sr = sf.read(path, dtype="float32", always_2d=True)   # (time, channels)
+    audio = audio.mean(axis=1)                                   # downmix to mono
+    waveform = torch.from_numpy(audio).unsqueeze(0)             # (1, time)
+    return {"waveform": waveform, "sample_rate": sr}
 MIN_CHANGE_DUR = 0.8   # ignore turns shorter than this when building the timeline
 
 
@@ -125,7 +143,7 @@ def diarize_file(path, pipe=None, num_speakers=None, min_change_dur=MIN_CHANGE_D
     """
     pipe = pipe or load_pipeline()
     kw = {"num_speakers": num_speakers} if num_speakers else {}
-    out = pipe(path, **kw)
+    out = pipe(_load_waveform(path), **kw)   # in-memory audio -> no torchcodec dependency
     ann = out.exclusive_speaker_diarization        # one speaker per instant -> clean changes
     embs = out.speaker_embeddings
     labels = ann.labels()

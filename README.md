@@ -138,6 +138,7 @@ diarization) — when the format is fixed, prefer `--speakers N`.
 
 | Symptom | Cause / fix |
 |---|---|
+| `torchcodec is not available / Could not load libtorchcodec` (esp. **Windows**) | Harmless — this project reads audio in-memory and does **not** use torchcodec. Make sure you're on the latest code (`git pull`); the warning at import can be ignored. |
 | `Could not download ... 401/403` | HF token missing, or you didn't accept the model terms (step 3) |
 | `torch.cuda.is_available()` is `False` | you installed the CPU wheel — reinstall the CUDA build (step 2) |
 | `'ffmpeg' not found on PATH` | install ffmpeg and reopen the terminal |
