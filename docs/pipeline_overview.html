@@ -1,96 +1,246 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
-<title>Offline Speaker Diarization — Pipeline Explainer</title>
+<title>Offline Speaker Diarization — Detailed Guide</title>
 <style>
-  :root{--ink:#12233b;--muted:#5b6b7f;--line:#c9d4e0;--accent:#1f6feb;--hd:#eaf0f7}
+  :root{--ink:#12233b;--muted:#5b6b7f;--line:#c9d4e0;--accent:#1f6feb;--hd:#eaf0f7;
+        --a:#e8f0fe;--b:#e7f7ee;--c:#fdf0e3;--d:#f3e9fb}
   *{box-sizing:border-box}
   html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  body{font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);margin:0;font-size:11px;line-height:1.44}
-  .page{width:210mm;min-height:296mm;padding:13mm;margin:0 auto;background:#fff}
-  h1{font-size:19px;margin:0 0 2px}
-  h2{font-size:12.5px;margin:13px 0 5px;color:var(--accent);border-bottom:1.5px solid var(--line);padding-bottom:2px;text-transform:uppercase;letter-spacing:.4px}
+  body{font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);margin:0;font-size:10.6px;line-height:1.45}
+  .page{width:210mm;min-height:296mm;padding:13mm;margin:0 auto;background:#fff;position:relative}
+  h1{font-size:20px;margin:0 0 2px}
+  h2{font-size:12.5px;margin:14px 0 5px;color:var(--accent);border-bottom:1.5px solid var(--line);padding-bottom:2px;text-transform:uppercase;letter-spacing:.4px}
+  h3{font-size:11px;margin:8px 0 2px}
   .sub{color:var(--muted);font-size:10.5px;margin:0 0 5px}
   .lead{background:var(--hd);border-left:3px solid var(--accent);padding:7px 10px;border-radius:4px;margin:6px 0}
   ul{margin:4px 0 4px 16px;padding:0} li{margin:2px 0}
-  .kw{font-family:ui-monospace,Menlo,Consolas,monospace;background:#f4f6f9;border:1px solid var(--line);border-radius:3px;padding:0 4px;font-size:9.6px;white-space:nowrap}
+  .kw{font-family:ui-monospace,Menlo,Consolas,monospace;background:#f4f6f9;border:1px solid var(--line);border-radius:3px;padding:0 4px;font-size:9.4px;white-space:nowrap}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
   .card{border:1px solid var(--line);border-radius:6px;padding:7px 9px}
-  .card h3{margin:0 0 3px;font-size:10.8px}
-  table{border-collapse:collapse;width:100%;font-size:9.8px;margin-top:3px}
-  th,td{border:1px solid var(--line);padding:3px 6px;text-align:left} th{background:var(--hd)}
-  code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:9.8px}
+  table{border-collapse:collapse;width:100%;font-size:9.5px;margin-top:3px}
+  th,td{border:1px solid var(--line);padding:3px 6px;text-align:left;vertical-align:top} th{background:var(--hd)}
+  code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:9.5px}
+  pre{background:#0f1b2d;color:#dbe7f5;border-radius:6px;padding:8px 10px;font-size:9px;overflow:hidden;margin:5px 0}
   .foot{color:var(--muted);font-size:9px;border-top:1px solid var(--line);margin-top:11px;padding-top:5px}
   .cap{text-align:center;color:var(--muted);font-size:9px;margin-top:1px}
+  .pb{page-break-before:always}
+  .tag{display:inline-block;background:var(--a);border:1px solid var(--line);border-radius:9px;padding:0 7px;font-size:8.8px;font-weight:700}
   @page{size:A4;margin:0}
 </style></head>
 <body>
+
+<!-- ============ PAGE 1 ============ -->
 <div class="page">
-  <h1>Offline Speaker Diarization — Pipeline Explainer</h1>
-  <p class="sub">Answer <b>“who spoke when”</b> for any recorded audio/video · open-source · GPU or CPU · Windows / Linux / macOS</p>
+  <h1>Offline Speaker Diarization — Detailed Guide</h1>
+  <p class="sub">A complete, self-contained explanation: what the project does, how the pipeline works end-to-end,
+  every key parameter, and how to run &amp; tune it. No prior knowledge assumed.</p>
 
-  <div class="lead"><b>What it does:</b> take a whole recording and output a <b>speaker-labeled timeline</b> —
-  each moment tagged <span class="kw">SPEAKER_00</span>, <span class="kw">SPEAKER_01</span>, … — with the same
-  voice always getting the same label, and <b>no fragmentation</b> (one person is never split into phantom speakers).</div>
+  <h2>1 · What This Project Does</h2>
+  <p><b>Speaker diarization</b> answers the question <b>“who spoke when?”</b>. Given a recording, it splits the audio
+  into time segments and labels each with a speaker — <span class="kw">SPEAKER_00</span>, <span class="kw">SPEAKER_01</span>, …
+  — so the <i>same voice always gets the same label</i>. It does <b>not</b> identify people by name (no “this is Alice”);
+  it only tells apart <i>distinct voices</i> and tracks them consistently through the recording.</p>
 
-  <h2>The Pipeline (5 steps)</h2>
-  <svg viewBox="0 0 760 118" width="720">
+  <div class="grid2">
+    <div class="card"><h3>Input → Output</h3>
+      <ul>
+        <li><b>Input:</b> any audio/video file (or a media URL).</li>
+        <li><b>Output:</b> speaker count + a timeline of <span class="kw">(start, end, SPEAKER_XX)</span> blocks,
+        as printed text, a JSON file, and a colored HTML timeline.</li>
+      </ul></div>
+    <div class="card"><h3>Two classic failures it avoids</h3>
+      <ul>
+        <li><b>Fragmentation:</b> one real person split into many phantom IDs.</li>
+        <li><b>Label permutation:</b> speaker labels randomly swapping over time.</li>
+      </ul>
+      Both are solved by using a <b>neural diarizer with a global view</b> of the whole file (details below).
+    </div>
+  </div>
+
+  <h2>2 · The Pipeline End-to-End</h2>
+  <p>The recording is decoded to <b>16 kHz mono PCM</b>, then passed through a neural model that internally slides a
+  <b>10-second analysis window with a 1-second step</b> (so consecutive windows overlap by 90%). Within each window it
+  finds speech and local speaker turns; a voice “fingerprint” is computed per turn; finally all fingerprints from the
+  whole file are clustered into a small number of speakers. A short post-processing stage cleans the result into a
+  readable timeline.</p>
+
+  <svg viewBox="0 0 760 250" width="720">
     <defs>
       <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#5b6b7f"/></marker>
       <style>
         .bx{rx:7;stroke:#c9d4e0;stroke-width:1.2}
         .t{font:600 10px -apple-system,Arial;fill:#12233b}
-        .s{font:8.6px ui-monospace,Menlo;fill:#5b6b7f}
+        .s{font:8.4px ui-monospace,Menlo;fill:#5b6b7f}
         .ln{stroke:#5b6b7f;stroke-width:1.3;fill:none;marker-end:url(#ar)}
+        .n{font:8px -apple-system,Arial;fill:#1f6feb}
       </style>
     </defs>
-    <rect class="bx" x="6"   y="30" width="132" height="54" fill="#e8f0fe"/>
-    <text class="t" x="18" y="52">1 · VAD</text><text class="s" x="18" y="66">find speech,</text><text class="s" x="18" y="77">drop silence/noise</text>
-    <rect class="bx" x="160" y="30" width="132" height="54" fill="#e8f0fe"/>
-    <text class="t" x="172" y="52">2 · Segmentation</text><text class="s" x="172" y="66">detect speaker-</text><text class="s" x="172" y="77">change boundaries</text>
-    <rect class="bx" x="314" y="30" width="132" height="54" fill="#e7f7ee"/>
-    <text class="t" x="326" y="52">3 · Embeddings</text><text class="s" x="326" y="66">256-d voice</text><text class="s" x="326" y="77">fingerprint / turn</text>
-    <rect class="bx" x="468" y="30" width="132" height="54" fill="#e7f7ee"/>
-    <text class="t" x="480" y="52">4 · Clustering</text><text class="s" x="480" y="66">group same-voice</text><text class="s" x="480" y="77">turns (VBx)</text>
-    <rect class="bx" x="622" y="30" width="132" height="54" fill="#fdf0e3"/>
-    <text class="t" x="634" y="52">5 · Timeline</text><text class="s" x="634" y="66">SPEAKER_XX +</text><text class="s" x="634" y="77">start/end times</text>
-    <path class="ln" d="M138,57 L158,57"/><path class="ln" d="M292,57 L312,57"/>
-    <path class="ln" d="M446,57 L466,57"/><path class="ln" d="M600,57 L620,57"/>
+    <!-- input -->
+    <rect class="bx" x="250" y="6" width="260" height="34" fill="#eef2f7"/>
+    <text class="t" x="264" y="21">Input: audio / video file (or URL)</text>
+    <text class="s" x="264" y="33">ffmpeg → 16 kHz mono PCM</text>
+    <path class="ln" d="M380,40 L380,54"/>
+
+    <!-- stage 1-2 -->
+    <rect class="bx" x="12" y="58" width="232" height="58" fill="#e8f0fe"/>
+    <text class="t" x="24" y="76">1–2 · VAD + Segmentation</text>
+    <text class="s" x="24" y="90">PyanNet, 10 s window · 1 s step</text>
+    <text class="s" x="24" y="102">→ speech regions + local turns</text>
+    <text class="n" x="24" y="113">chunk size = 10 s (90% overlap)</text>
+
+    <rect class="bx" x="264" y="58" width="232" height="58" fill="#e7f7ee"/>
+    <text class="t" x="276" y="76">3 · Speaker embeddings</text>
+    <text class="s" x="276" y="90">256-dim vector per speech turn</text>
+    <text class="s" x="276" y="102">(voice fingerprint, wespeaker)</text>
+    <text class="n" x="276" y="113">same voice ≈ 0.83 · different ≈ 0.10</text>
+
+    <rect class="bx" x="516" y="58" width="232" height="58" fill="#e7f7ee"/>
+    <text class="t" x="528" y="76">4 · Clustering (global)</text>
+    <text class="s" x="528" y="90">VBx agglomerative, cosine</text>
+    <text class="s" x="528" y="102">groups all turns → N speakers</text>
+    <text class="n" x="528" y="113">threshold 0.6 (default) / 0.85 (ours)</text>
+
+    <path class="ln" d="M244,87 L262,87"/>
+    <path class="ln" d="M496,87 L514,87"/>
+    <path class="ln" d="M632,116 L632,138"/>
+
+    <!-- stage 5 -->
+    <rect class="bx" x="180" y="140" width="400" height="60" fill="#fdf0e3"/>
+    <text class="t" x="194" y="158">5 · Post-processing → timeline</text>
+    <text class="s" x="194" y="172">exclusive labels · merge same-speaker (gap ≤ 0.6 s)</text>
+    <text class="s" x="194" y="184">drop turns &lt; 0.8 s · consolidate clusters &lt; 20 s into nearest voice</text>
+    <text class="n" x="194" y="195">removes phantom / short-utterance speakers</text>
+    <path class="ln" d="M632,138 L632,150 L582,160"/>
+    <path class="ln" d="M380,200 L380,214"/>
+
+    <!-- output -->
+    <rect class="bx" x="230" y="216" width="300" height="30" fill="#f3e9fb"/>
+    <text class="t" x="244" y="235">Output: (start, end, SPEAKER_XX) + JSON + HTML</text>
   </svg>
-  <p class="cap">A neural model does steps 1–3; clustering (4) groups the voice fingerprints with a <i>global view of the whole file</i>.</p>
+  <p class="cap">Fig. 1 — Full data flow. The neural model (stages 1–3) analyses 10 s chunks; clustering (4) merges them with a whole-file view.</p>
 
-  <h2>Key Concepts</h2>
-  <div class="grid2">
-    <div class="card"><h3>Voice fingerprints separate cleanly</h3>
-      <ul><li>Each speech turn → a 256-dim <b>embedding</b>.</li>
-      <li>Same speaker ≈ <b>0.83</b> cosine similarity; different speakers ≈ <b>0.10</b> — a wide, reliable gap.</li>
-      <li>Clustering exploits that gap to assign consistent labels.</li></ul></div>
-    <div class="card"><h3>Why it doesn’t fragment</h3>
-      <ul><li>Global clustering sees the <b>whole file</b>, not tiny chunks.</li>
-      <li>An expressive speaker’s varied turns still cluster together.</li>
-      <li>Two safeguards clean the edges (below).</li></ul></div>
-  </div>
+  <div class="foot">Offline Speaker Diarization · Detailed Guide · Page 1 of 3</div>
+</div>
 
-  <h2>The Two Accuracy Safeguards</h2>
-  <table>
-    <tr><th>Safeguard</th><th>Problem it fixes</th><th>Knob</th></tr>
-    <tr><td><b>Clustering threshold</b></td><td>one expressive speaker over-split into extra IDs (raise) / two similar voices merged (lower)</td><td><span class="kw">--threshold 0.85</span></td></tr>
-    <tr><td><b>Small-cluster consolidation</b></td><td>phantom speakers formed from noisy 1–2 s interjections → merged into nearest real voice</td><td><span class="kw">--min-speaker-dur 20</span></td></tr>
-    <tr><td><b>Known count (best)</b></td><td>removes all guesswork when the format is fixed (e.g. 2-host podcast)</td><td><span class="kw">--speakers 2</span></td></tr>
-  </table>
+<!-- ============ PAGE 2 ============ -->
+<div class="page pb">
+  <h2>3 · Each Stage Explained</h2>
 
-  <h2>Run It</h2>
-  <p style="margin:3px 0"><code>python verify.py interview.mp3 --speakers 2</code> &nbsp;→&nbsp; prints the speaker/change summary,
-  writes <span class="kw">verify_result.json</span>, and opens a colored <span class="kw">timeline.html</span>.</p>
-  <p style="margin:3px 0">Library: <code>from diarizer import diarize_file; timeline, n = diarize_file("audio.wav", num_speakers=2)</code></p>
+  <h3>Stage 1 — Voice Activity Detection (VAD)</h3>
+  <p>Finds where <i>anyone</i> is speaking and discards silence, music and noise, so later stages only see speech.
+  Handled by the same neural segmentation model.</p>
 
-  <h2>Notes for Reproduction</h2>
+  <h3>Stage 2 — Segmentation (the “chunking”)</h3>
+  <p>The audio is scanned with a <b>10-second sliding window</b> that advances <b>1 second</b> at a time (the
+  <span class="kw">step</span>), giving heavy overlap so no turn is missed at a boundary. Inside each window a neural
+  network (<b>PyanNet</b>) predicts, frame by frame, which of up to a few local speakers is active — including
+  <b>speaker-change points</b>. This is why boundaries are accurate even when people talk quickly back-and-forth.</p>
+
+  <h3>Stage 3 — Speaker Embeddings (voice fingerprints)</h3>
+  <p>For every speech turn, a neural speaker-verification network outputs a fixed <b>256-dimensional vector</b> that
+  encodes the voice’s characteristics. The crucial property: vectors from the <b>same person are close</b>
+  (cosine similarity ≈ <b>0.83</b>) while vectors from <b>different people are far apart</b> (≈ <b>0.10</b>). This wide,
+  reliable gap is what makes speakers separable.</p>
+
+  <h3>Stage 4 — Clustering (the heart)</h3>
+  <p>All embeddings from the entire file are grouped by a <b>VBx agglomerative clustering</b> algorithm using cosine
+  similarity. Because it sees <b>every</b> turn at once (a “global view”), it can reliably decide how many speakers
+  exist and which turns belong together — the step that defeats fragmentation and label-permutation. Its
+  <b>threshold</b> controls how eagerly clusters merge (see §5).</p>
+
+  <h3>Stage 5 — Post-processing → clean timeline</h3>
   <ul>
-    <li><b>GPU:</b> NVIDIA CUDA (or Apple MPS) is ~10–30× faster than CPU; install the matching PyTorch build.</li>
-    <li><b>Model access:</b> free Hugging Face token + accept the <span class="kw">pyannote/speaker-diarization-community-1</span> terms once; weights (~1–2 GB) cache locally, then run offline.</li>
-    <li><b>Engine:</b> pyannote-audio 4 · community-1 · wespeaker embeddings · VBx clustering · PyTorch — all open-source, no cloud, no paid APIs.</li>
-    <li><b>Honest limitation:</b> for unknown speaker counts, no single threshold is perfect for every recording — prefer <span class="kw">--speakers N</span> when the count is known.</li>
+    <li><b>Exclusive labelling:</b> assign exactly one speaker to each instant.</li>
+    <li><b>Merge</b> consecutive same-speaker turns separated by ≤ <b>0.6 s</b>.</li>
+    <li><b>Drop</b> turns shorter than <b>0.8 s</b> from the timeline (noise/blips).</li>
+    <li><b>Consolidate</b> any cluster with less than <b>20 s</b> of total speech into its nearest real speaker by
+    voice similarity — this removes “phantom” speakers created by short interjections (“yeah”, “right”).</li>
   </ul>
 
-  <div class="foot">Offline Speaker Diarization · Self-contained explainer · see README.md for full setup steps</div>
+  <h2>4 · Key Concept — Known vs Unknown Speaker Count</h2>
+  <div class="grid2">
+    <div class="card"><h3>Known count <span class="tag">most reliable</span></h3>
+      Tell the model exactly how many speakers there are (<span class="kw">--speakers 2</span>). It removes all
+      guesswork and gives the best accuracy — ideal for fixed formats (2-host podcast, panel with a set guest count).
+    </div>
+    <div class="card"><h3>Unknown count</h3>
+      The model estimates the number itself. Convenient, but count estimation is inherently error-prone; the two
+      safeguards (threshold + consolidation) keep it clean. There is <b>no single threshold perfect for every
+      recording</b> — an honest, well-known limitation.
+    </div>
+  </div>
+
+  <h2>5 · All Parameters &amp; Defaults</h2>
+  <table>
+    <tr><th>Parameter</th><th>Default</th><th>Where</th><th>What it controls</th></tr>
+    <tr><td>Sample rate</td><td>16 kHz mono</td><td>input</td><td>required audio format for the models</td></tr>
+    <tr><td><span class="kw">segmentation window</span></td><td>10.0 s</td><td>pyannote (internal)</td><td>the analysis “chunk” size</td></tr>
+    <tr><td><span class="kw">segmentation step</span></td><td>1.0 s</td><td>pyannote (internal)</td><td>hop between chunks → 90% overlap</td></tr>
+    <tr><td><span class="kw">embedding dim</span></td><td>256</td><td>pyannote (internal)</td><td>size of each voice fingerprint</td></tr>
+    <tr><td><span class="kw">clustering threshold</span></td><td>0.6 std / <b>0.85</b> ours</td><td><b>tuning knob</b></td><td>higher = merge more (fights over-split); lower = split more</td></tr>
+    <tr><td><span class="kw">Fa</span>, <span class="kw">Fb</span></td><td>0.07, 0.8</td><td>VBx (advanced)</td><td>clustering smoothing — rarely changed</td></tr>
+    <tr><td><span class="kw">num_speakers</span></td><td><i>None</i> (auto)</td><td><b>tuning knob</b></td><td>set an exact known count for best accuracy</td></tr>
+    <tr><td><span class="kw">min_speaker_dur</span></td><td>20 s (recommended)</td><td><b>tuning knob</b></td><td>merge clusters with less speech than this into nearest voice</td></tr>
+    <tr><td><span class="kw">min_change_dur</span></td><td>0.8 s</td><td>post-processing</td><td>drop turns shorter than this from the timeline</td></tr>
+    <tr><td><span class="kw">merge gap</span></td><td>0.6 s</td><td>post-processing</td><td>join adjacent same-speaker turns within this gap</td></tr>
+  </table>
+
+  <div class="foot">Offline Speaker Diarization · Detailed Guide · Page 2 of 3</div>
 </div>
+
+<!-- ============ PAGE 3 ============ -->
+<div class="page pb">
+  <h2>6 · How to Run</h2>
+  <p><b>One-command tool</b> — prints a summary, writes <span class="kw">verify_result.json</span>, opens a colored
+  <span class="kw">timeline.html</span>:</p>
+  <pre>python verify.py interview.mp3 --speakers 2          # known count (best)
+python verify.py podcast.wav                         # auto-detect count
+python verify.py "https://youtu.be/&lt;ID&gt;" --speakers 2  # from a URL (needs yt-dlp)</pre>
+  <p><b>As a library:</b></p>
+  <pre>from diarizer import load_pipeline, diarize_file
+pipe = load_pipeline()                       # auto: CUDA &gt; Apple MPS &gt; CPU
+timeline, n = diarize_file("meeting.wav", num_speakers=None, min_speaker_dur=20.0)
+# timeline = [(start_sec, end_sec, "SPEAKER_XX"), ...]</pre>
+
+  <h3>Reading the output</h3>
+  <pre>======================================================
+  RESULT: 2 speaker(s)  |  7 speaker changes
+======================================================
+  #  1  00:00-00:31  (31.4s)  SPEAKER_01
+  #  2  00:31-00:53  (21.7s)  SPEAKER_00   ...</pre>
+
+  <h2>7 · Tuning Cheat-Sheet</h2>
+  <table>
+    <tr><th>Symptom</th><th>Fix</th></tr>
+    <tr><td>You know the exact number of speakers</td><td><span class="kw">--speakers N</span> (always best)</td></tr>
+    <tr><td>One lively speaker split into extra IDs</td><td>raise <span class="kw">--threshold</span> (0.85 → 0.90)</td></tr>
+    <tr><td>Two similar voices merged into one</td><td>lower <span class="kw">--threshold</span> (0.85 → 0.70)</td></tr>
+    <tr><td>Tiny phantom speakers from short “yeah/right”</td><td>raise <span class="kw">--min-speaker-dur</span> (20 → 30)</td></tr>
+  </table>
+
+  <h2>8 · Requirements &amp; Reproduction</h2>
+  <ul>
+    <li><b>Python 3.10+</b>, and <b>ffmpeg</b> on the system PATH.</li>
+    <li><b>GPU strongly recommended:</b> NVIDIA <b>CUDA</b> (or Apple <b>MPS</b>) is ~10–30× faster than CPU. Install
+    the matching PyTorch build; the code auto-selects CUDA → MPS → CPU.</li>
+    <li><b>Model access (one-time):</b> a free Hugging Face token, and accept the terms for
+    <span class="kw">pyannote/speaker-diarization-community-1</span>. Weights (~1–2 GB) download once and cache locally,
+    then everything runs offline.</li>
+    <li>Full step-by-step setup (incl. Windows) is in the project <b>README.md</b>.</li>
+  </ul>
+
+  <h2>9 · Technology &amp; Honest Limitations</h2>
+  <p><b>Stack:</b> <span class="kw">pyannote-audio 4</span> · <span class="kw">speaker-diarization-community-1</span> ·
+  wespeaker 256-d embeddings · <span class="kw">VBx</span> clustering · <span class="kw">PyTorch</span> ·
+  <span class="kw">ffmpeg</span> — all open-source, no paid APIs, no cloud.</p>
+  <ul>
+    <li>Unknown-count diarization has no universally perfect threshold — prefer a known count when possible.</li>
+    <li>Two people who sound almost identical (e.g. same accent + pitch) may occasionally merge.</li>
+    <li>A speaker who talks for only a few seconds total may be absorbed into another by consolidation.</li>
+    <li>Heavy overlapping speech (people talking at once) is attributed to one speaker per instant.</li>
+  </ul>
+
+  <div class="foot">Offline Speaker Diarization · Detailed Guide · Page 3 of 3 · “who spoke when”</div>
+</div>
+
 </body></html>
