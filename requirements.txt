@@ -1,9 +1,12 @@
 # Core dependencies.
-# NOTE: install PyTorch FIRST with the right build for your machine (see README),
-#       then run:  pip install -r requirements.txt
+#
+# IMPORTANT: install PyTorch + torchaudio FIRST, TOGETHER, from the SAME CUDA index
+# (see README step 2), e.g.:
+#     pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
+# They are intentionally NOT listed below: if they were, `pip install -r requirements.txt`
+# could pull CPU-only wheels from PyPI and mismatch your CUDA torch version
+# (torch and torchaudio MUST share the exact same version number).
 pyannote.audio>=4.0
-torch
-torchaudio
 soundfile>=0.12
 numpy>=1.24
 python-dotenv>=1.0

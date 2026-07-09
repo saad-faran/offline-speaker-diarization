@@ -141,6 +141,7 @@ diarization) — when the format is fixed, prefer `--speakers N`.
 | `torchcodec is not available / Could not load libtorchcodec` (esp. **Windows**) | Harmless — this project reads audio in-memory and does **not** use torchcodec. Make sure you're on the latest code (`git pull`); the warning at import can be ignored. |
 | `Could not download ... 401/403` | HF token missing, or you didn't accept the model terms (step 3) |
 | `torch.cuda.is_available()` is `False` | you installed the CPU wheel — reinstall the CUDA build (step 2) |
+| `undefined symbol` / import crash, or `torchaudio 2.x+cpu` alongside `torch 2.y+cuXXX` | **version/build mismatch** — `torch` and `torchaudio` must share the *exact same version* from the *same* CUDA index. Reinstall: `pip uninstall -y torchaudio` then `pip install torchaudio==<your-torch-version> --index-url https://download.pytorch.org/whl/cuXXX` |
 | `'ffmpeg' not found on PATH` | install ffmpeg and reopen the terminal |
 | `'yt-dlp' not found` | only needed for URL input: `pip install yt-dlp` |
 | Very slow | you're on CPU — use an NVIDIA GPU / CUDA build |
