@@ -13,7 +13,7 @@ self-contained colored-timeline HTML (opens in your browser) plus a JSON result.
 Requirements on PATH: ffmpeg (always), yt-dlp (only for URL input).
 Works on Windows / Linux / macOS, on GPU (CUDA/MPS) or CPU.
 """
-import os, sys, shutil, subprocess, json, argparse, webbrowser, pathlib
+import os, sys, glob, shutil, subprocess, json, argparse, webbrowser, pathlib
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 from diarizer import load_pipeline, diarize_file
@@ -42,8 +42,16 @@ def fetch_audio(src):
         return out
     # treat as URL -> download bestaudio, then convert
     ytdlp = _tool("yt-dlp")
+    # clear any previous download so a new URL is always fetched fresh
+    # (yt-dlp skips downloading if the target filename already exists)
+    for f in glob.glob(os.path.join(OUT_DIR, "_dl*")):
+        try:
+            os.remove(f)
+        except OSError:
+            pass
     raw = os.path.join(OUT_DIR, "_dl.wav")
     subprocess.run([ytdlp, "-f", "bestaudio", "-x", "--audio-format", "wav",
+                    "--force-overwrites", "--no-continue",
                     "-o", os.path.join(OUT_DIR, "_dl.%(ext)s"), src], check=True)
     out = os.path.join(OUT_DIR, "_dl_16k.wav")
     subprocess.run([_tool("ffmpeg"), "-y", "-i", raw, "-ac", "1", "-ar", "16000", out],
