@@ -46,9 +46,10 @@ python -m venv .venv
 # Linux / macOS:
 source .venv/bin/activate
 
-# 3) Install PyTorch FIRST, with the build that matches your machine.
-#    NVIDIA GPU (pick the CUDA that matches your driver, e.g. cu121 / cu124):
-pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
+# 3) Install PyTorch + torchaudio FIRST, TOGETHER, from ONE CUDA index.
+#    Pick an index that has BOTH packages at the SAME version (see note below).
+#    A widely-available matched pair that runs on any recent NVIDIA GPU:
+pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu128
 #    CPU-only (any machine, slower):
 #    pip install torch torchaudio
 
@@ -56,9 +57,16 @@ pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
 pip install -r requirements.txt
 ```
 
-> Get the exact PyTorch command for your system from
-> <https://pytorch.org/get-started/locally/>. Verify the GPU is visible:
-> `python -c "import torch; print(torch.cuda.is_available())"` should print `True`.
+> **Important — torch and torchaudio must be the *same version*.** They're compiled
+> together; mixing e.g. `torch 2.13` with `torchaudio 2.11` crashes with an
+> `undefined symbol` error. Newer `torch` releases sometimes ship *before* a matching
+> `torchaudio`, and very-new CUDA indexes (e.g. `cu132`) may have no `torchaudio` at all.
+> If your first choice fails, use an index where both exist at the same version —
+> `cu128` currently provides a matched `torch 2.11.0 + torchaudio 2.11.0`, and a CUDA 12.8
+> build runs fine on newer GPUs (drivers are backward-compatible).
+>
+> Then verify the GPU is visible — this should print `True`:
+> `python -c "import torch; print(torch.cuda.is_available())"`
 
 ---
 
