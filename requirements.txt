@@ -13,3 +13,10 @@ python-dotenv>=1.0
 
 # Optional — only needed to diarize directly from a YouTube/media URL:
 yt-dlp
+
+# Video overlay (burn speaker labels onto video):
+Pillow>=9.0
+
+# Optional — background-music removal before diarizing (--separate-vocals).
+# Heavy; needs a GPU to be practical. Install only if you need it:
+#   pip install demucs

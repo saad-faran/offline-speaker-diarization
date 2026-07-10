@@ -92,9 +92,17 @@ def build_html(timeline, n, total, out_path):
         f.write(html)
 
 
+def download_video(url, out):
+    """Download a video (with audio) as mp4 via yt-dlp."""
+    ytdlp = _tool("yt-dlp")
+    subprocess.run([ytdlp, "--no-warnings", "-f", "bv*+ba/b", "--merge-output-format", "mp4",
+                    "-o", out, url], check=True)
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description="Offline speaker diarization + visual timeline.")
-    ap.add_argument("input", help="audio file path or media URL")
+    ap.add_argument("input", help="audio/video file path or media URL")
     ap.add_argument("--speakers", type=int, default=None,
                     help="force a known speaker count (most reliable when you know it)")
     ap.add_argument("--threshold", type=float, default=0.85,
@@ -103,11 +111,41 @@ def main():
     ap.add_argument("--min-speaker-dur", type=float, default=20.0,
                     help="merge clusters with less total speech than this (s) into the "
                          "nearest real speaker. Ignored with --speakers.")
-    ap.add_argument("--no-open", action="store_true", help="don't auto-open the HTML")
+    ap.add_argument("--overlay", action="store_true",
+                    help="download the video (or use a local video) and burn speaker labels "
+                         "onto it for audiovisual verification")
+    ap.add_argument("--separate-vocals", action="store_true",
+                    help="strip background music with Demucs before diarizing (music-heavy audio)")
+    ap.add_argument("--no-open", action="store_true", help="don't auto-open the output")
     args = ap.parse_args()
 
-    print(f"-> preparing audio: {args.input}")
-    wav = fetch_audio(args.input)
+    import soundfile as sf
+    video = None
+    if args.overlay:
+        if os.path.exists(args.input) and args.input.lower().endswith((".mp4", ".mkv", ".mov", ".webm", ".avi")):
+            video = args.input
+        else:
+            print("-> downloading video...")
+            video = download_video(args.input, os.path.join(OUT_DIR, "video.mp4"))
+        wav = os.path.join(OUT_DIR, "_ov_audio.wav")
+        subprocess.run([_tool("ffmpeg"), "-y", "-i", video, "-ac", "1", "-ar", "16000", wav],
+                       check=True, capture_output=True)
+    else:
+        print(f"-> preparing audio: {args.input}")
+        wav = fetch_audio(args.input)
+
+    if args.separate_vocals:
+        import separate
+        if not separate.available():
+            sys.exit("Demucs not installed. Run: pip install demucs")
+        print("-> separating vocals (Demucs)... this can take a while")
+        import torch
+        audio, _ = sf.read(wav, dtype="float32")
+        dev = "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
+        voc = separate.separate_vocals(audio, device=dev)
+        wav = os.path.join(OUT_DIR, "_vocals_16k.wav")
+        sf.write(wav, voc, 16000)
+
     mode = f"known N={args.speakers}" if args.speakers else \
            f"auto-N (threshold={args.threshold}, min_speaker_dur={args.min_speaker_dur}s)"
     print(f"-> diarizing [{mode}] ... (first run downloads the model; GPU strongly recommended)")
@@ -115,7 +153,6 @@ def main():
     tl, n = diarize_file(wav, pipe=pipe, num_speakers=args.speakers,
                          min_speaker_dur=0.0 if args.speakers else args.min_speaker_dur)
 
-    import soundfile as sf
     info = sf.info(wav)
     total = info.frames / info.samplerate
     changes = sum(1 for i in range(1, len(tl)) if tl[i][2] != tl[i-1][2])
@@ -132,8 +169,18 @@ def main():
                    "timeline": [[round(s, 2), round(e, 2), sp] for s, e, sp in tl]},
                   f, indent=2)
     print(f"\nVisual timeline: {out_html}\nJSON: {out_json}")
+
+    opened = out_html
+    if args.overlay and video:
+        import overlay
+        out_mp4 = os.path.join(OUT_DIR, "labeled.mp4")
+        print("-> burning speaker labels onto the video...")
+        overlay.burn(video, tl, out_mp4)
+        print(f"Labeled video: {out_mp4}")
+        opened = out_mp4
+
     if not args.no_open:
-        webbrowser.open(pathlib.Path(out_html).resolve().as_uri())
+        webbrowser.open(pathlib.Path(opened).resolve().as_uri())
 
 
 if __name__ == "__main__":

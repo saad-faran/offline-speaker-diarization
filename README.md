@@ -165,6 +165,26 @@ safeguards clean up real-world audio: an adjustable clustering threshold, and me
 low-support clusters into the nearest real speaker. Full picture:
 [`docs/pipeline_overview.pdf`](docs/pipeline_overview.pdf).
 
+## Video overlay & background-music removal
+
+**See the labels on the video** (`--overlay`) — get a video with the speaker label burned in,
+synced to who's talking, for easy audiovisual verification:
+```bash
+python verify.py "https://www.youtube.com/watch?v=<ID>" --overlay --speakers 2   # downloads the video
+python verify.py local_video.mp4 --overlay
+```
+Produces `labeled.mp4` (labels burned on) **plus** the usual `timeline.html` + JSON.
+Uses PIL + ffmpeg's `overlay` filter, so it needs no special ffmpeg build.
+
+**Strip background music** before diarizing (`--separate-vocals`) — isolates vocals with
+[Demucs](https://github.com/facebookresearch/demucs) so music doesn't contaminate speaker
+embeddings (dramas, broadcasts, songs):
+```bash
+pip install demucs
+python verify.py video.mp4 --overlay --separate-vocals --speakers 3
+```
+Demucs is heavy — practical on an NVIDIA GPU; slow on CPU. Best combined with `--speakers N`.
+
 ## License
 
 MIT — see [LICENSE](LICENSE). Model weights are governed by their own licenses on Hugging Face.
