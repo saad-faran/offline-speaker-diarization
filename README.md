@@ -165,6 +165,17 @@ safeguards clean up real-world audio: an adjustable clustering threshold, and me
 low-support clusters into the nearest real speaker. Full picture:
 [`docs/pipeline_overview.pdf`](docs/pipeline_overview.pdf).
 
+## Getting every speaker (incl. short / quiet ones)
+
+If a speaker who only talks briefly (a few seconds total) is missing or merged, it's the
+small-cluster consolidation deleting them. Fixes:
+```bash
+python verify.py <audio-or-video> --speakers 4 --separate-vocals   # know the cast? use it
+#   --speakers N skips consolidation, so a brief speaker still gets their own ID
+python verify.py <audio> --min-speaker-dur 3                        # or lower the consolidation floor
+```
+Add `--separate-vocals` when background music is masking quiet speakers.
+
 ## Video overlay & background-music removal
 
 **See the labels on the video** (`--overlay`) — get a video with the speaker label burned in,
